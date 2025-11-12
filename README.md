@@ -53,20 +53,67 @@ A modern, AI-powered web application for detecting fake reviews using machine le
 
 ## Project Structure
 ```
-Fake-review-detection/
+fake-product-review/
+├── Artifacts/
+│   └── pipeline_model.joblib
+├── Assets/
+│   ├── frequency_bigramdictionary_en_243_342.txt
+│   └── frequency_dictionary_en_82_765.txt
 ├── backend/
 │   └── app.py
+├── Data/
+│   ├── Feature-Engineered/
+│   │   ├── preprocessed_lemmatization_features.csv
+│   │   ├── preprocessed_no_stopwords_features.csv
+│   │   ├── preprocessed_no_stopwords_no_lemmatization_features.csv
+│   │   ├── preprocessed_stemming_features.csv
+│   │   └── preprocessed_stemming_no_stopwords_features.csv
+│   ├── Pre-processed/
+│   │   ├── encoded_dataset.csv
+│   │   ├── exploration.csv
+│   │   ├── preprocessed_lemmatization.csv
+│   │   ├── preprocessed_no_stopwords.csv
+│   │   ├── preprocessed_no_stopwords_no_lemmatization.csv
+│   │   ├── preprocessed_stemming.csv
+│   │   ├── preprocessed_stemming_no_stopwords.csv
+│   │   └── translated_output.csv
+│   └── Raw/
+│       └── fakeReviewData.csv
 ├── frontend/
-│   ├── src/
-│   │   ├── App.js
-│   │   ├── App.css
-│   │   └── index.js
-│   └── public/
-│       └── index.html
+│   ├── App.js
+│   ├── index.html
+│   ├── index.js
+│   ├── package.json
+│   ├── public/
+│   │   └── index.html
+│   └── src/
+│       ├── App.css
+│       ├── App.js
+│       └── index.js
+├── Notebooks/
+│   ├── N0_exploration.ipynb
+│   ├── N1_Pre_processing.ipynb
+│   ├── N2_Feature_engineering.ipynb
+│   ├── N3_EDA.ipynb
+│   ├── N4_Embeddings.ipynb
+│   ├── N5_Modal_dev.ipynb
+│   ├── N6_pipeline.ipynb
+│   ├── progress_log.csv
+│   └── mlruns/
+│       ├── 0/
+│       │   └── meta.yaml
+│       └── 391638039569745943/
+│           └── meta.yaml
+├── public/
+│   └── index.html
+├── Reports/
 ├── src/
-│   ├── model.pkl
-│   └── tfidf_vectorizer.pkl
-└── README.md
+│   ├── app.py
+│   └── temp.py
+├── dockerfile
+├── LICENSE
+├── README.md
+├── requirements.txt
 ```
 
 ## License
