@@ -155,44 +155,37 @@ function App() {
     setTypingTimeout(timeout);
   }, [typingTimeout]);
 
+
   const analyzeReview = async (reviewText) => {
-    // Enhanced mock analysis with more realistic data
-    const wordCount = reviewText.split(/\s+/).length;
-    const charCount = reviewText.length;
-    const hasPersonalDetails = /I |my |me |personally/i.test(reviewText);
-    const repetitionScore = calculateRepetitionScore(reviewText);
-    
-    // More sophisticated mock analysis
-    let aiProbability = 0.3; // Base probability
-    
-    // Factors that increase AI probability
-    if (wordCount < 15) aiProbability += 0.2;
-    if (repetitionScore > 0.3) aiProbability += 0.25;
-    if (!hasPersonalDetails) aiProbability += 0.15;
-    if (reviewText.includes('fast shipping') || reviewText.includes('would buy again')) aiProbability += 0.1;
-    
-    aiProbability = Math.min(aiProbability, 0.95); // Cap at 95%
-    
-    const prediction = aiProbability > 0.6 ? 'AI Generated' : 'Human Written';
-    const confidence = Math.max(aiProbability, 1 - aiProbability);
-    
-    return {
-      prediction,
-      confidence,
-      probabilities: [aiProbability, 1 - aiProbability],
-      analysis: {
-        word_count: wordCount,
-        repetition_score: repetitionScore,
-        has_personal_pronouns: hasPersonalDetails,
-        sentiment: aiProbability > 0.6 ? 'generic_positive' : 'authentic_positive'
+    // Call backend API for analysis
+    const response = await fetch('http://localhost:5000/api/predict', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
-      temporal_analysis: {
-        reviews_today: Math.floor(Math.random() * 15) + 5,
-        reviews_this_week: Math.floor(Math.random() * 100) + 50,
-        reviews_this_month: Math.floor(Math.random() * 400) + 200,
-        posting_hour: new Date().getHours(),
-        device_trust_score: temporalStats?.trust_score || 75
-      }
+      body: JSON.stringify({
+        review: reviewText,
+        rating,
+        category,
+        device_id: deviceId,
+        timestamp: new Date().toISOString()
+      })
+    });
+    if (!response.ok) {
+      throw new Error('Analysis failed. Please try again.');
+    }
+    const result = await response.json();
+    // Map backend response to frontend result format
+    return {
+      prediction: result.prediction,
+      confidence: result.confidence,
+      probabilities: result.probabilities,
+      analysis: {
+        sentiment: result.features_collected?.sentiment,
+        similarity_score: result.features_collected?.similarity_score,
+        lsa_score: result.features_collected?.lsa_score
+      },
+      temporal_analysis: result.temporal_analysis
     };
   };
 
@@ -609,20 +602,16 @@ const AnalyzerView = ({
                 <h4>📊 Analysis Details</h4>
                 <div className="details-grid">
                   <div className="detail-item">
-                    <span className="detail-label">Word Count</span>
-                    <span className="detail-value">{result.analysis.word_count}</span>
+                    <span className="detail-label">Sentiment Score</span>
+                    <span className="detail-value">{result.analysis.sentiment}</span>
                   </div>
                   <div className="detail-item">
-                    <span className="detail-label">Repetition Score</span>
-                    <span className="detail-value">{(result.analysis.repetition_score * 100).toFixed(1)}%</span>
+                    <span className="detail-label">Content Similarity</span>
+                    <span className="detail-value">{result.analysis.similarity_score}</span>
                   </div>
                   <div className="detail-item">
-                    <span className="detail-label">Personal Pronouns</span>
-                    <span className="detail-value">{result.analysis.has_personal_pronouns ? 'Yes' : 'No'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Sentiment</span>
-                    <span className="detail-value">{result.analysis.sentiment.replace('_', ' ')}</span>
+                    <span className="detail-label">LSA Score</span>
+                    <span className="detail-value">{result.analysis.lsa_score}</span>
                   </div>
                 </div>
               </div>

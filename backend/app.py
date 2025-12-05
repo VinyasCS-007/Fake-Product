@@ -25,19 +25,23 @@ analytics_data = {
     'monthly_stats': defaultdict(int)
 }
 
-# Load model and vectorizer
+
+# Load new model files
 try:
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(base_dir, 'model.pkl')
-    vectorizer_path = os.path.join(base_dir, 'tfidf_vectorizer.pkl')
-    
+    model_path = os.path.join(base_dir, 'TfidfModel1.pickle')
+    X_path = os.path.join(base_dir, 'X1.pickle')
+    y_path = os.path.join(base_dir, 'y1.pickle')
+
     model = joblib.load(model_path)
-    vectorizer = joblib.load(vectorizer_path)
-    logger.info("Model and vectorizer loaded successfully")
+    X = joblib.load(X_path)
+    y = joblib.load(y_path)
+    logger.info("New model files loaded successfully")
 except Exception as e:
-    logger.error(f"Error loading model: {e}")
+    logger.error(f"Error loading new model files: {e}")
     model = None
-    vectorizer = None
+    X = None
+    y = None
 
 def generate_device_id():
     """Generate a unique device identifier"""
@@ -164,45 +168,49 @@ def get_analytics_summary():
     })
 
 @app.route('/api/predict', methods=['POST'])
+
 def predict():
-    if model is None or vectorizer is None:
+    if model is None or X is None or y is None:
         return jsonify({'error': 'Model not loaded properly'}), 500
-        
+
     data = request.get_json()
     review_text = data.get('review', '').strip()
-    
-    # Enhanced features
     rating = data.get('rating', None)
     category = data.get('category', '')
     device_id = data.get('device_id', '')
     user_timestamp = data.get('timestamp', datetime.now().isoformat())
-    
+
     if not review_text:
         return jsonify({'error': 'No review text provided.'}), 400
-    
     if len(review_text) < 10:
         return jsonify({'error': 'Review text too short. Minimum 10 characters required.'}), 400
-    
+
     try:
-        # Calculate temporal features
         temporal_features = calculate_temporal_features(device_id, user_timestamp)
-        
-        # Transform text (main model feature)
-        x_text = vectorizer.transform([review_text])
-        
-        # Create enhanced dummy features
-        dummy_features = create_dummy_features(data, temporal_features)
-        dummy_features = dummy_features.reshape(1, -1)
-        
-        # Combine features
-        feats = np.hstack((x_text.toarray(), dummy_features))
-        
-        # Get prediction
+
+        # Sentimental Analysis
+        from textblob import TextBlob
+        sentiment = TextBlob(review_text).sentiment.polarity
+
+        # Content Similarity (Cosine)
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+        tfidf_vectorizer = TfidfVectorizer(max_features=2000, min_df=3, max_df=0.6, stop_words='english')
+        tfidf_matrix = tfidf_vectorizer.fit_transform([review_text])
+        similarity_score = cosine_similarity(tfidf_matrix, tfidf_matrix)[0][0]
+
+        # Latent Semantic Analysis (LSA)
+        from sklearn.decomposition import TruncatedSVD
+        lsa = TruncatedSVD(n_components=1, n_iter=100)
+        lsa.fit(tfidf_matrix)
+        lsa_score = lsa.explained_variance_ratio_[0]
+
+        # Predict using loaded model
+        feats = np.array([sentiment, similarity_score, lsa_score]).reshape(1, -1)
+        prediction = model.predict(feats)[0]
         probabilities = model.predict_proba(feats)[0]
-        prediction = 1 if probabilities[1] >= 0.5 else 0
-        result = 'Original' if prediction == 1 else 'Computer generated'
-        
-        # Store analytics data
+        result = 'Human Written' if prediction == 1 else 'AI Generated'
+
         review_record = {
             'id': str(uuid.uuid4()),
             'review_preview': review_text[:100] + '...' if len(review_text) > 100 else review_text,
@@ -213,18 +221,16 @@ def predict():
             'device_id': device_id,
             'timestamp': user_timestamp,
             'temporal_features': temporal_features,
-            'analysis_timestamp': datetime.now().isoformat()
+            'analysis_timestamp': datetime.now().isoformat(),
+            'sentiment': sentiment,
+            'similarity_score': similarity_score,
+            'lsa_score': lsa_score
         }
-        
         analytics_data['reviews'].append(review_record)
-        
-        # Update device stats
         if device_id and device_id in analytics_data['devices']:
             analytics_data['devices'][device_id]['last_seen'] = datetime.now().isoformat()
             analytics_data['devices'][device_id]['total_reviews'] += 1
-        
         logger.info(f"Prediction: {result}, Device: {device_id}, Temporal: {temporal_features}")
-        
         return jsonify({
             'prediction': result,
             'probabilities': probabilities.tolist(),
@@ -242,10 +248,12 @@ def predict():
                 'rating': rating is not None,
                 'category': bool(category),
                 'device_tracking': bool(device_id),
-                'temporal_analysis': True
+                'temporal_analysis': True,
+                'sentiment': sentiment,
+                'similarity_score': similarity_score,
+                'lsa_score': lsa_score
             }
         })
-        
     except Exception as e:
         logger.error(f"Prediction error: {e}")
         return jsonify({'error': 'Prediction failed'}), 500
