@@ -30,7 +30,7 @@ jobs:
     - name: Run backend tests
       run: |
         pytest || echo "No tests found"
-        python -c "import joblib; model = joblib.load('TfidfModel1.pickle'); import numpy as np; dummy = np.array([[0.1,0.2,0.3]]); print('Model prediction:', model.predict(dummy))"
+        python -c "import joblib; model = joblib.load('classifier1.pickle'); import numpy as np; dummy = np.array([[0.1,0.2,0.3]]); print('Model prediction:', model.predict(dummy))"
       working-directory: ./backend
 
     - name: Set up Node.js
